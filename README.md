@@ -30,7 +30,7 @@ func handler(ctx context.Context) {
     }
 
     err := l.Print(&llogger.Input{
-        LogLevel:  "critical",
+        LogLevel:  "error",
         Text:      "This is just an example text",
         RequestID: "1234567890",
         SourceIP:  "127.0.0.1",
@@ -45,7 +45,7 @@ func handler(ctx context.Context) {
 The example above would result in an output to stdout that looks like
 
 ```json
-{"loglevel":"critical","time":"2018-01-01 00:00:00.000001","message":"This is just an example text","service":"service","env":"env","request_id":"1234567890","source_ip":"127.0.0.1","user_agent":"Example v1.0","duration":0.000123,"time_left":2.999877,"resource":{"function":"main.main","file":"/go/src/github.com/nuttmeister/example/example.go","row":8}}
+{"loglevel":"error","time":"2018-01-01 00:00:00.000001","message":"This is just an example text","service":"service","env":"env","request_id":"1234567890","source_ip":"127.0.0.1","user_agent":"Example v1.0","duration":0.000123,"time_left":2.999877,"resource":{"function":"main.main","file":"/go/src/github.com/nuttmeister/example/example.go","row":8}}
 ```
 
 We use stdout for logging since all messages to stdout and stderr are sent to cloudwatch logs.
@@ -62,7 +62,7 @@ go test
 
 We only return an error if either `LogLevel` or `Message` is missing. Otherwise the
 package will always try and find a way to print the message. If it encounters an error
-it will try and handle it as well as output an critical logevel message about the
+it will try and handle it as well as output an error logevel message about the
 error it encounterd. So it can be searched in CloudWatch.
 
 ## Package error messages
@@ -73,11 +73,11 @@ message has been printed.
 
 ### Caller function couldn't be retrieved
 
-If go can't get the caller (file, function, row etc) we will print a critical message before the invoked
+If go can't get the caller (file, function, row etc) we will print a error message before the invoked
 message that looks like this. The `message` part of the message will then be set to `Couldn't get caller function`.
 
 ### Message couldn't get JSON Marshaled
 
-If go can't JSON Marshal the Input we will print a critical message before the invoked message that
+If go can't JSON Marshal the Input we will print a error message before the invoked message that
 has the following `message` `Error unmarshalling JSON`.
 

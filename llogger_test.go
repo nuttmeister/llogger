@@ -24,7 +24,7 @@ func Test(t *testing.T) {
 	now := time.Now().UTC()
 	ctx, cancel := context.WithDeadline(context.Background(), now.Add(time.Duration(3*time.Second)))
 
-	// Fail to create *Logger.
+	// Fail to create *Client.
 	if _, err := Create(nil, "test", "test"); err.Error() != "ctx must be set" {
 		t.Fatalf("Expected error to be '%s' when ctx wasn't set but got '%s'", "ctx must be set", err.Error())
 	}
@@ -42,14 +42,14 @@ func Test(t *testing.T) {
 	// Create logger.
 	l, err := Create(ctx, "shplss/common/logger", "test")
 	if err != nil {
-		t.Fatalf("Couldn't create Logger. Error %s", err.Error())
+		t.Fatalf("Couldn't create Client. Error %s", err.Error())
 	}
 
 	// Try to make prints that should return error.
 	if err := l.Print(&Input{Message: "Testmessage"}); err.Error() != "LogLevel must be set" {
 		t.Fatalf("Expected error to be '%s' when LogLevel wasn't set but got '%s'", "LogLevel must be set", err.Error())
 	}
-	if err := l.Print(&Input{Loglevel: "critical"}); err.Error() != "Message must be set" {
+	if err := l.Print(&Input{Loglevel: "error"}); err.Error() != "Message must be set" {
 		t.Fatalf("Expected error to be '%s' when Message wasn't set but got '%s'", "Message must be set", err.Error())
 	}
 
@@ -59,13 +59,13 @@ func Test(t *testing.T) {
 	}
 	os.Stdout = w
 
-	// Message 1, successfull critical message.
-	if err := l.Print(&Input{Loglevel: "critical", Message: "Testmessage"}); err != nil {
+	// Message 1, successfull error message.
+	if err := l.Print(&Input{Loglevel: "error", Message: "Testmessage"}); err != nil {
 		t.Fatalf(err.Error())
 	}
 	// Message 2, test the best effort printing mechanic when an error has occured.
 	l.bestEffortPrint(&output{
-		Loglevel: "critical",
+		Loglevel: "error",
 		Time:     now.Format("2006-01-02 15:04:05.999999"),
 		Message:  "Testmessage",
 		Service:  "shplss/common/logger",
@@ -126,10 +126,10 @@ func Test(t *testing.T) {
 	// Check that we have the correct values in msg1 and msg2.
 	switch {
 	// Check for correct loglevel.
-	case msg1.Loglevel != "critical":
-		t.Fatalf("loglevel in msg1 not critical")
-	case msg2.Loglevel != "critical":
-		t.Fatalf("loglevel in msg2 not critical")
+	case msg1.Loglevel != "error":
+		t.Fatalf("loglevel in msg1 not error")
+	case msg2.Loglevel != "error":
+		t.Fatalf("loglevel in msg2 not error")
 
 	// Check for correct message.
 	case msg1.Message != "Testmessage":

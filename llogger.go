@@ -14,10 +14,10 @@ const (
 	basePath    = "/go/src/github.com/nuttmeister/llogger"
 )
 
-// Logger struct contains the state of the Logger as well
+// Client struct contains the state of the Client as well
 // as channels for Warning and Critical time left until
 // lambda deadline is reached.
-type Logger struct {
+type Client struct {
 	start    time.Time
 	deadline time.Time
 	service  string
@@ -59,7 +59,7 @@ type resource struct {
 }
 
 // Print takes inp and prints it as a JSON to stdout.
-func (l *Logger) Print(inp *Input) error {
+func (l *Client) Print(inp *Input) error {
 	// If the required variables aren't set, just return doing nothing.
 	switch {
 	case inp.Loglevel == "":
@@ -92,7 +92,7 @@ func (l *Logger) Print(inp *Input) error {
 	// If we couldn't get Caller print error.
 	case !ok:
 		outputs = []*output{&output{
-			Loglevel: "critical",
+			Loglevel: "error",
 			Time:     time.Now().UTC().Format("2006-01-02 15:04:05.999999"),
 			Message:  "Couldn't get caller function",
 			Service:  baseService,
@@ -124,12 +124,12 @@ func (l *Logger) Print(inp *Input) error {
 		raw, err := json.Marshal(o)
 
 		switch {
-		// If JSON Marshal fails print a critical message about failing JSON Marshal.
+		// If JSON Marshal fails print a error message about failing JSON Marshal.
 		// And do a best effort of printing a JSON representation of the original message.
 		case err != nil:
-			// Best effort print a critical message about JSON marshaling failing.
+			// Best effort print a error message about JSON marshaling failing.
 			l.bestEffortPrint(&output{
-				Loglevel: "critical",
+				Loglevel: "error",
 				Time:     time.Now().UTC().Format("2006-01-02 15:04:05.999999"),
 				Message:  "Error unmarshalling JSON",
 				Service:  baseService,
@@ -158,7 +158,7 @@ func (l *Logger) Print(inp *Input) error {
 // we can't marshal it to JSON using the json package for some reason. It will try and
 // remove any special characters from the string so that it becomes a valid JSON.
 // There is however no guarantee that it will be valid.
-func (l *Logger) bestEffortPrint(out *output) {
+func (l *Client) bestEffortPrint(out *output) {
 	format := `{"loglevel":"%s","time":"%s","message":"%s","service":"%s","env":"%s"`
 	format += `,"duration":%f,"time_left":%f,"resource":{"function":"%s","file":"%s","row":%d}}%s`
 
@@ -168,9 +168,9 @@ func (l *Logger) bestEffortPrint(out *output) {
 
 // Create will start a timer that keeps track of the time left
 // and will print a warning when 25% of Deadline is left. And
-// a critical message when 10% of the Deadline is left.
-// Returns *Logger.
-func Create(ctx context.Context, service string, env string) (*Logger, error) {
+// a error message when 10% of the Deadline is left.
+// Returns *Client.
+func Create(ctx context.Context, service string, env string) (*Client, error) {
 	switch {
 	case ctx == nil:
 		return nil, fmt.Errorf("ctx must be set")
@@ -183,7 +183,7 @@ func Create(ctx context.Context, service string, env string) (*Logger, error) {
 
 	}
 
-	l := &Logger{
+	l := &Client{
 		start:   time.Now().UTC(),
 		service: service,
 		env:     env,
@@ -216,7 +216,7 @@ func Create(ctx context.Context, service string, env string) (*Logger, error) {
 	// Wait for Critical.
 	go func() {
 		<-c
-		l.Print(&Input{Loglevel: "critical", Message: "Only 10% of execution time left"})
+		l.Print(&Input{Loglevel: "error", Message: "Only 10% of execution time left"})
 		l.Critical <- l.deadline.Sub(time.Now())
 	}()
 
