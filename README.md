@@ -1,4 +1,4 @@
-# lloger
+# llogger
 
 Easy logs to CloudWatch.
 
