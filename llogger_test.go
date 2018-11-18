@@ -25,22 +25,25 @@ func Test(t *testing.T) {
 	ctx, cancel := context.WithDeadline(context.Background(), now.Add(time.Duration(3*time.Second)))
 
 	// Fail to create *Client.
-	if _, err := Create(nil, "test", "test"); err.Error() != "ctx must be set" {
+	if _, err := Create(nil, "test", "test", "1.0.0"); err.Error() != "ctx must be set" {
 		t.Fatalf("Expected error to be '%s' when ctx wasn't set but got '%s'", "ctx must be set", err.Error())
 	}
-	if _, err := Create(ctx, "", "test"); err.Error() != "service must be set" {
+	if _, err := Create(ctx, "", "test", "1.0.0"); err.Error() != "service must be set" {
 		t.Fatalf("Expected error to be '%s' when service wasn't set but got '%s'", "service must be set", err.Error())
 	}
-	if _, err := Create(ctx, "test", ""); err.Error() != "env must be set" {
+	if _, err := Create(ctx, "test", "", "1.0.0"); err.Error() != "env must be set" {
 		t.Fatalf("Expected error to be '%s' when env wasn't set but got '%s'", "env must be set", err.Error())
 	}
-	if _, err := Create(context.Background(), "test", "test"); err.Error() != "Couldn't get Deadline from context" {
+	if _, err := Create(ctx, "test", "test", ""); err.Error() != "version must be set" {
+		t.Fatalf("Expected error to be '%s' when version wasn't set but got '%s'", "version must be set", err.Error())
+	}
+	if _, err := Create(context.Background(), "test", "test", "1.0.0"); err.Error() != "Couldn't get Deadline from context" {
 		t.Fatalf("Expected error to be '%s' when ctx lacks Deadline but got '%s'",
 			"Couldn't get Deadline from context", err.Error())
 	}
 
 	// Create logger.
-	l, err := Create(ctx, "shplss/common/logger", "test")
+	l, err := Create(ctx, "llogger", "test", "1.0.0")
 	if err != nil {
 		t.Fatalf("Couldn't create Client. Error %s", err.Error())
 	}
@@ -49,7 +52,7 @@ func Test(t *testing.T) {
 	if err := l.Print(&Input{Message: "Testmessage"}); err.Error() != "LogLevel must be set" {
 		t.Fatalf("Expected error to be '%s' when LogLevel wasn't set but got '%s'", "LogLevel must be set", err.Error())
 	}
-	if err := l.Print(&Input{Loglevel: "error"}); err.Error() != "Message must be set" {
+	if err := l.Print(&Input{LogLevel: "error"}); err.Error() != "Message must be set" {
 		t.Fatalf("Expected error to be '%s' when Message wasn't set but got '%s'", "Message must be set", err.Error())
 	}
 
@@ -60,12 +63,12 @@ func Test(t *testing.T) {
 	os.Stdout = w
 
 	// Message 1, successfull error message.
-	if err := l.Print(&Input{Loglevel: "error", Message: "Testmessage"}); err != nil {
+	if err := l.Print(&Input{LogLevel: "error", Message: "Testmessage"}); err != nil {
 		t.Fatalf(err.Error())
 	}
 	// Message 2, test the best effort printing mechanic when an error has occured.
 	l.bestEffortPrint(&output{
-		Loglevel: "error",
+		LogLevel: "error",
 		Time:     now.Format("2006-01-02 15:04:05.999999"),
 		Message:  "Testmessage",
 		Service:  "shplss/common/logger",
@@ -126,9 +129,9 @@ func Test(t *testing.T) {
 	// Check that we have the correct values in msg1 and msg2.
 	switch {
 	// Check for correct loglevel.
-	case msg1.Loglevel != "error":
+	case msg1.LogLevel != "error":
 		t.Fatalf("loglevel in msg1 not error")
-	case msg2.Loglevel != "error":
+	case msg2.LogLevel != "error":
 		t.Fatalf("loglevel in msg2 not error")
 
 	// Check for correct message.
