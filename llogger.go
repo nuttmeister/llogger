@@ -22,6 +22,7 @@ type Client struct {
 	deadline time.Time
 	service  string
 	env      string
+	version  string
 	context  context.Context
 	Warning  chan<- time.Duration
 	Critical chan<- time.Duration
@@ -31,7 +32,7 @@ type Client struct {
 // to stdout in JSON format. RequestID, Source IP
 // and UserAgent will be omitted if left empty.
 type Input struct {
-	Loglevel  string /* Required */
+	LogLevel  string /* Required */
 	Message   string /* Required */
 	RequestID string
 	SourceIP  string
@@ -39,11 +40,12 @@ type Input struct {
 }
 
 type output struct {
-	Loglevel  string   `json:"loglevel"`
+	LogLevel  string   `json:"loglevel"`
 	Time      string   `json:"time"`
 	Message   string   `json:"message"`
 	Service   string   `json:"service"`
 	Env       string   `json:"env"`
+	Version   string   `json:"version"`
 	RequestID string   `json:"request_id,omitempty"`
 	SourceIP  string   `json:"source_ip,omitempty"`
 	UserAgent string   `json:"user_agent,omitempty"`
@@ -60,9 +62,9 @@ type resource struct {
 
 // Print takes inp and prints it as a JSON to stdout.
 func (l *Client) Print(inp *Input) error {
-	// If the required variables aren't set, just return doing nothing.
+	// If the required variables aren't set returne error.
 	switch {
-	case inp.Loglevel == "":
+	case inp.LogLevel == "":
 		return fmt.Errorf("LogLevel must be set")
 
 	case inp.Message == "":
@@ -70,7 +72,7 @@ func (l *Client) Print(inp *Input) error {
 	}
 
 	out := &output{
-		Loglevel:  inp.Loglevel,
+		LogLevel:  inp.LogLevel,
 		Time:      time.Now().UTC().Format("2006-01-02 15:04:05.999999"),
 		Message:   inp.Message,
 		Service:   l.service,
@@ -92,7 +94,7 @@ func (l *Client) Print(inp *Input) error {
 	// If we couldn't get Caller print error.
 	case !ok:
 		outputs = []*output{&output{
-			Loglevel: "error",
+			LogLevel: "error",
 			Time:     time.Now().UTC().Format("2006-01-02 15:04:05.999999"),
 			Message:  "Couldn't get caller function",
 			Service:  baseService,
@@ -129,7 +131,7 @@ func (l *Client) Print(inp *Input) error {
 		case err != nil:
 			// Best effort print a error message about JSON marshaling failing.
 			l.bestEffortPrint(&output{
-				Loglevel: "error",
+				LogLevel: "error",
 				Time:     time.Now().UTC().Format("2006-01-02 15:04:05.999999"),
 				Message:  "Error unmarshalling JSON",
 				Service:  baseService,
@@ -162,7 +164,7 @@ func (l *Client) bestEffortPrint(out *output) {
 	format := `{"loglevel":"%s","time":"%s","message":"%s","service":"%s","env":"%s"`
 	format += `,"duration":%f,"time_left":%f,"resource":{"function":"%s","file":"%s","row":%d}}%s`
 
-	fmt.Printf(format, out.Loglevel, out.Time, out.Message, out.Service, out.Env, out.Duration,
+	fmt.Printf(format, out.LogLevel, out.Time, out.Message, out.Service, out.Env, out.Duration,
 		out.TimeLeft, out.Resource.Function, out.Resource.File, out.Resource.Row, "\n")
 }
 
@@ -170,7 +172,7 @@ func (l *Client) bestEffortPrint(out *output) {
 // and will print a warning when 25% of Deadline is left. And
 // a error message when 10% of the Deadline is left.
 // Returns *Client.
-func Create(ctx context.Context, service string, env string) (*Client, error) {
+func Create(ctx context.Context, service string, env string, version string) (*Client, error) {
 	switch {
 	case ctx == nil:
 		return nil, fmt.Errorf("ctx must be set")
@@ -181,6 +183,8 @@ func Create(ctx context.Context, service string, env string) (*Client, error) {
 	case env == "":
 		return nil, fmt.Errorf("env must be set")
 
+	case version == "":
+		return nil, fmt.Errorf("version must be set")
 	}
 
 	l := &Client{
@@ -209,14 +213,14 @@ func Create(ctx context.Context, service string, env string) (*Client, error) {
 	// Wait for Warning.
 	go func() {
 		<-w
-		l.Print(&Input{Loglevel: "warning", Message: "Only 25% of execution time left"})
+		l.Print(&Input{LogLevel: "warning", Message: "Only 25% of execution time left"})
 		l.Warning <- l.deadline.Sub(time.Now())
 	}()
 
 	// Wait for Critical.
 	go func() {
 		<-c
-		l.Print(&Input{Loglevel: "error", Message: "Only 10% of execution time left"})
+		l.Print(&Input{LogLevel: "error", Message: "Only 10% of execution time left"})
 		l.Critical <- l.deadline.Sub(time.Now())
 	}()
 
