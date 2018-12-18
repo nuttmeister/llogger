@@ -1,4 +1,4 @@
-// Package llogger simplifies printing messages to CloudWatch logs.
+// Package llogger simplifies printing messages to CloudWatch logs from AWS Lambda.
 package llogger
 
 import (
@@ -14,47 +14,81 @@ import (
 
 const fileName = "github.com/nuttmeister/llogger/llogger_test.go"
 
+type message1 struct {
+	Time     string   `json:"time"`
+	Service  string   `json:"service"`
+	Env      string   `json:"env"`
+	Version  string   `json:"version"`
+	LogLevel string   `json:"loglevel"`
+	Message  string   `json:"message"`
+	Duration float64  `json:"duration"`
+	TimeLeft float64  `json:"timeLeft"`
+	Resource resource `json:"resource"`
+	Extra    string   `json:"extra"`
+}
+
+type message2 struct {
+	Time     string   `json:"custom-time"`
+	Service  string   `json:"service"`
+	Env      string   `json:"env"`
+	Version  string   `json:"version"`
+	LogLevel string   `json:"custom-loglevel"`
+	Message  string   `json:"custom-message"`
+	Duration float64  `json:"custom-duration"`
+	TimeLeft float64  `json:"custom-timeLeft"`
+	Resource resource `json:"custom-resource"`
+}
+
+type message3 struct {
+	Time     string   `json:"time"`
+	LogLevel string   `json:"loglevel"`
+	Message  string   `json:"message"`
+	Resource resource `json:"resource"`
+}
+
+var (
+	startTime = time.Now().UTC()
+	funcName1 = "github.com/nuttmeister/llogger.Test"
+)
+
 // Test will test all the coverage on the logger.go file.
 func Test(t *testing.T) {
-	startTime := time.Now().UTC()
-	funcName1 := "github.com/nuttmeister/llogger.Test"
-	funcName2 := "TestBestEffortPrint"
-
 	// Create a context with time slightly after Test start.
 	now := time.Now().UTC()
 	ctx, cancel := context.WithDeadline(context.Background(), now.Add(time.Duration(3*time.Second)))
 
-	// Fail to create *Client.
-	if _, err := Create(nil, "test", "test", "1.0.0"); err.Error() != "ctx must be set" {
-		t.Fatalf("Expected error to be '%s' when ctx wasn't set but got '%s'", "ctx must be set", err.Error())
-	}
-	if _, err := Create(ctx, "", "test", "1.0.0"); err.Error() != "service must be set" {
-		t.Fatalf("Expected error to be '%s' when service wasn't set but got '%s'", "service must be set", err.Error())
-	}
-	if _, err := Create(ctx, "test", "", "1.0.0"); err.Error() != "env must be set" {
-		t.Fatalf("Expected error to be '%s' when env wasn't set but got '%s'", "env must be set", err.Error())
-	}
-	if _, err := Create(ctx, "test", "test", ""); err.Error() != "version must be set" {
-		t.Fatalf("Expected error to be '%s' when version wasn't set but got '%s'", "version must be set", err.Error())
-	}
-	if _, err := Create(context.Background(), "test", "test", "1.0.0"); err.Error() != "Couldn't get Deadline from context" {
-		t.Fatalf("Expected error to be '%s' when ctx lacks Deadline but got '%s'",
-			"Couldn't get Deadline from context", err.Error())
-	}
+	// Create lloggers.
+	client1 := Create(ctx, Input{
+		"service":      "llogger-test",
+		"env":          "test",
+		"version":      "1.0.0",
+		"llogger-tfn":  1,
+		"llogger-llfn": 2,
+		"llogger-mfn":  3,
+		"llogger-dfn":  4,
+		"llogger-tlfn": 5,
+		"llogger-rfn":  6,
+		"llogger-wm":   7,
+		"llogger-cm":   8,
+	})
 
-	// Create logger.
-	l, err := Create(ctx, "llogger", "test", "1.0.0")
-	if err != nil {
-		t.Fatalf("Couldn't create Client. Error %s", err.Error())
-	}
+	client2 := Create(nil, Input{
+		"service":      "llogger-test",
+		"env":          "test",
+		"version":      "1.0.0",
+		"llogger-tfn":  "custom-time",
+		"llogger-llfn": "custom-loglevel",
+		"llogger-mfn":  "custom-message",
+		"llogger-dfn":  "custom-duration",
+		"llogger-tlfn": "custom-timeLeft",
+		"llogger-rfn":  "custom-resource",
+		"llogger-wm":   "custom-warning",
+		"llogger-cm":   "custom-error",
+	})
 
-	// Try to make prints that should return error.
-	if err := l.Print(&Input{Message: "Testmessage"}); err.Error() != "LogLevel must be set" {
-		t.Fatalf("Expected error to be '%s' when LogLevel wasn't set but got '%s'", "LogLevel must be set", err.Error())
-	}
-	if err := l.Print(&Input{LogLevel: "error"}); err.Error() != "Message must be set" {
-		t.Fatalf("Expected error to be '%s' when Message wasn't set but got '%s'", "Message must be set", err.Error())
-	}
+	client3 := Create(nil, nil)
+
+	client4 := Create(context.Background(), nil)
 
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -62,25 +96,11 @@ func Test(t *testing.T) {
 	}
 	os.Stdout = w
 
-	// Message 1, successfull error message.
-	if err := l.Print(&Input{LogLevel: "error", Message: "Testmessage"}); err != nil {
-		t.Fatalf(err.Error())
-	}
-	// Message 2, test the best effort printing mechanic when an error has occured.
-	l.bestEffortPrint(&output{
-		LogLevel: "error",
-		Time:     now.Format("2006-01-02 15:04:05.999999"),
-		Message:  "Testmessage",
-		Service:  "shplss/common/logger",
-		Env:      "test",
-		Duration: time.Duration(50 * time.Millisecond).Seconds(),
-		TimeLeft: time.Duration(2950 * time.Millisecond).Seconds(),
-		Resource: resource{
-			Function: "TestBestEffortPrint",
-			File:     fileName,
-			Row:      0,
-		},
-	})
+	// Print 3 messages with the 3 different clients.
+	client1.Print(Input{"loglevel": "verbose", "message": "Testmessage1", "extra": "extra test data"})
+	client2.Print(Input{"custom-loglevel": "custom-warning", "custom-message": "Testmessage2"})
+	client3.Print(Input{"loglevel": "error", "message": "Testmessage3"})
+	client4.Print(Input{"this-should-fail": func() string { return "did-we-fail?" }})
 
 	raw := make(chan []byte)
 	go func() {
@@ -93,79 +113,173 @@ func Test(t *testing.T) {
 	// Get result from stdout.
 	strs := strings.Split(string(<-raw), "\n")
 
-	// Check that strs has length of 3 and that last str is a blank line.
+	// Check that strs has length of 4 and that last str is a blank line.
 	switch {
-	case len(strs) != 3:
-		t.Fatalf("Expected slice length from stdout to be 3 but got %d", len(strs))
+	case len(strs) != 5:
+		t.Fatalf("Expected slice length from stdout to be 5 but got %d", len(strs))
 
-	case strs[2] != "":
-		t.Fatalf("Exepected last slice string from stdout to be a blank str but got %s", strs[2])
+	case strs[4] != "":
+		t.Fatalf("Exepected last slice string from stdout to be a blank str but got %s", strs[4])
 	}
 
-	// Unmarshal Message 1
-	msg1 := &output{}
-	if err := json.Unmarshal([]byte(strs[0]), msg1); err != nil {
-		t.Fatalf("Couldn't unmarshal the message 1. Error %s", err.Error())
-	}
-
-	// Unmarshal Message 2
-	msg2 := &output{}
-	if err := json.Unmarshal([]byte(strs[1]), msg2); err != nil {
-		t.Fatalf("Couldn't unmarshal the message 2. Error %s", err.Error())
-	}
-
-	// Parse the time in Message 1
-	msg1Time, err := time.Parse("2006-01-02 15:04:05.999999", msg1.Time)
-	if err != nil {
-		t.Fatalf("Couldn't parse time in message 1. Error %s", err.Error())
-	}
-
-	// Parse the time in Message 2
-	msg2Time, err := time.Parse("2006-01-02 15:04:05.999999", msg2.Time)
-	if err != nil {
-		t.Fatalf("Couldn't parse time in message 2. Error %s", err.Error())
-	}
-
-	// Check that we have the correct values in msg1 and msg2.
-	switch {
-	// Check for correct loglevel.
-	case msg1.LogLevel != "error":
-		t.Fatalf("loglevel in msg1 not error")
-	case msg2.LogLevel != "error":
-		t.Fatalf("loglevel in msg2 not error")
-
-	// Check for correct message.
-	case msg1.Message != "Testmessage":
-		t.Fatalf("message in msg1 not Testmessage")
-	case msg2.Message != "Testmessage":
-		t.Fatalf("message in msg2 not Testmessage")
-
-	// Check that time is after starttime.
-	case msg1Time.Before(startTime):
-		t.Fatalf("Time in msg1 was before start time of test! Msg1 time: %s, Test start time: %s",
-			msg1Time.String(), startTime.String())
-	case msg2Time.Before(startTime):
-		t.Fatalf("Time in msg2 was before start time of test! Msg2 time: %s, Test start time: %s",
-			msg2Time.String(), startTime.String())
-
-	// Check filename of function.
-	case !strings.Contains(msg1.Resource.File, fileName):
-		t.Fatalf("Expected Filename in msg1 to include %s but got %s", fileName, msg1.Resource.File)
-	case !strings.Contains(msg2.Resource.File, fileName):
-		t.Fatalf("Expected Filename in msg2 to include %s but got %s", fileName, msg2.Resource.File)
-
-	// Check function name.
-	case msg1.Resource.Function != funcName1:
-		t.Fatalf("Expected Function in msg1 to be %s but got %s", funcName1, msg1.Resource.Function)
-	case msg2.Resource.Function != funcName2:
-		t.Fatalf("Expected Function in msg2 to be %s but got %s", funcName2, msg2.Resource.Function)
-
-	// Check time left.
-	case msg1.TimeLeft < 2.9 || msg1.TimeLeft > 3.0:
-		t.Fatalf("Expected TimeLeft in msg1 to be between 2.9 and 3.0 seconds. But got %f", msg1.TimeLeft)
-	case msg2.TimeLeft < 2.9 || msg2.TimeLeft > 3.0:
-		t.Fatalf("Expected TimeLeft in msg2 to be between 2.9 and 3.0 seconds. But got %f", msg2.TimeLeft)
-	}
+	// Test msg outputs
+	msg1(strs[0], t)
+	msg2(strs[1], t)
+	msg3(strs[2], t)
+	msg4(strs[3], t)
 
 	cancel()
+}
+
+// Check that msg1 is correct.
+func msg1(raw string, t *testing.T) {
+	// Unmarshal Message
+	msg := &message1{}
+	if err := json.Unmarshal([]byte(raw), msg); err != nil {
+		t.Fatalf("Couldn't unmarshal the message in msg1. Error %s", err.Error())
+	}
+
+	// Parse the time in Message
+	msgTime, err := time.Parse("2006-01-02 15:04:05.999999", msg.Time)
+	if err != nil {
+		t.Fatalf("Couldn't parse time in message in msg1. Error %s", err.Error())
+	}
+
+	switch {
+	// Check for correct loglevel.
+	case msg.LogLevel != "verbose":
+		t.Fatalf("loglevel in msg1 not error")
+
+	// Check for correct message.
+	case msg.Message != "Testmessage1":
+		t.Fatalf("message in msg1 not Testmessage1")
+
+	// Check for correct service.
+	case msg.Service != "llogger-test":
+		t.Fatalf("service in msg1 not llogger-test")
+
+	// Check for correct env.
+	case msg.Env != "test":
+		t.Fatalf("env in msg1 not test")
+
+	// Check for correct version.
+	case msg.Version != "1.0.0":
+		t.Fatalf("version in msg1 not 1.0.0")
+
+	// Check that time is after starttime.
+	case msgTime.Before(startTime):
+		t.Fatalf("Time in msg1 was before start time of test! Time: %s, Test start time: %s",
+			msgTime.String(), startTime.String())
+
+	// Check filename of function.
+	case !strings.Contains(msg.Resource.File, fileName):
+		t.Fatalf("Expected Filename in msg1 to include %s but got %s", fileName, msg.Resource.File)
+
+	// Check function name.
+	case msg.Resource.Function != funcName1:
+		t.Fatalf("Expected Function in msg1 to be %s but got %s", funcName1, msg.Resource.Function)
+
+	// Check time left.
+	case msg.TimeLeft < 2.9 || msg.TimeLeft > 3.0:
+		t.Fatalf("Expected TimeLeft in msg1 to be between 2.9 and 3.0 seconds. But got %f", msg.TimeLeft)
+
+	// Check Extra Data
+	case msg.Extra != "extra test data":
+		t.Fatalf("extra in msg1 not extra test data")
+	}
+}
+
+// Check that msg2 is correct.
+func msg2(raw string, t *testing.T) {
+	// Unmarshal Message
+	msg := &message2{}
+	if err := json.Unmarshal([]byte(raw), msg); err != nil {
+		t.Fatalf("Couldn't unmarshal the message in msg2. Error %s", err.Error())
+	}
+
+	// Parse the time in Message
+	msgTime, err := time.Parse("2006-01-02 15:04:05.999999", msg.Time)
+	if err != nil {
+		t.Fatalf("Couldn't parse time in message in msg2. Error %s", err.Error())
+	}
+
+	switch {
+	// Check for correct loglevel.
+	case msg.LogLevel != "custom-warning":
+		t.Fatalf("loglevel in msg2 not custom-warning")
+
+	// Check for correct message.
+	case msg.Message != "Testmessage2":
+		t.Fatalf("message in msg2 not Testmessage2")
+
+		// Check for correct service.
+	case msg.Service != "llogger-test":
+		t.Fatalf("service in msg2 not llogger-test")
+
+	// Check for correct env.
+	case msg.Env != "test":
+		t.Fatalf("env in msg2 not test")
+
+	// Check for correct version.
+	case msg.Version != "1.0.0":
+		t.Fatalf("version in msg2 not 1.0.0")
+
+	// Check that time is after starttime.
+	case msgTime.Before(startTime):
+		t.Fatalf("Time in msg2 was before start time of test! Time: %s, Test start time: %s",
+			msgTime.String(), startTime.String())
+
+	// Check filename of function.
+	case !strings.Contains(msg.Resource.File, fileName):
+		t.Fatalf("Expected Filename in msg2 to include %s but got %s", fileName, msg.Resource.File)
+
+	// Check function name.
+	case msg.Resource.Function != funcName1:
+		t.Fatalf("Expected Function in msg2 to be %s but got %s", funcName1, msg.Resource.Function)
+	}
+}
+
+// Check that msg3 is correct.
+func msg3(raw string, t *testing.T) {
+	// Unmarshal Message
+	msg := &message3{}
+	if err := json.Unmarshal([]byte(raw), msg); err != nil {
+		t.Fatalf("Couldn't unmarshal the message in msg3. Error %s", err.Error())
+	}
+
+	// Parse the time in Message
+	msgTime, err := time.Parse("2006-01-02 15:04:05.999999", msg.Time)
+	if err != nil {
+		t.Fatalf("Couldn't parse time in message in msg3. Error %s", err.Error())
+	}
+
+	switch {
+	// Check for correct loglevel.
+	case msg.LogLevel != "error":
+		t.Fatalf("loglevel in msg3 not error")
+
+	// Check for correct message.
+	case msg.Message != "Testmessage3":
+		t.Fatalf("message in msg3 not Testmessage3")
+
+	// Check that time is after starttime.
+	case msgTime.Before(startTime):
+		t.Fatalf("Time in msg3 was before start time of test! Time: %s, Test start time: %s",
+			msgTime.String(), startTime.String())
+
+	// Check filename of function.
+	case !strings.Contains(msg.Resource.File, fileName):
+		t.Fatalf("Expected Filename in msg3 to include %s but got %s", fileName, msg.Resource.File)
+
+	// Check function name.
+	case msg.Resource.Function != funcName1:
+		t.Fatalf("Expected Function in msg3 to be %s but got %s", funcName1, msg.Resource.Function)
+	}
+}
+
+// Check that msg4 is correct.
+func msg4(raw string, t *testing.T) {
+	if !strings.Contains(raw, "Couldn't JSON marshal the error message") {
+		t.Fatalf("Expected JSON Marshal to fail in msg4. But got %s", raw)
+	}
 }
