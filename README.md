@@ -22,9 +22,9 @@ import (
     log "github.com/nuttmeister/llogger"
 )
 func handler(ctx context.Context) {
-    l := log.Create(ctx, Input{"service": "myService", "env": "production", "llogger-llfn": "custom-loglevel")
+    l := log.Create(ctx, Input{"service": "myService", "env": "production", "llogger-llfn": "custom-loglevel"})
 
-    l.Print(&log.Input{
+    l.Print(log.Input{
         "custom-loglevel":  "error",
         "message":          "We got an fatal error in the flux capacitor",
         "requestId":        "1337-1234567890",
