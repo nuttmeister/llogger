@@ -186,8 +186,8 @@ func Create(ctx context.Context, inp Input) *Client {
 	// And create the channels for sending messages
 	// back to the calling function.
 	dur := l.deadline.Sub(l.start)
-	w := time.Tick(dur * (3 / 4))
-	c := time.Tick(dur * (9 / 10))
+	w := time.Tick(dur * 3 / 4)
+	c := time.Tick(dur * 9 / 10)
 
 	l.Warning = make(chan<- time.Duration)
 	l.Critical = make(chan<- time.Duration)
