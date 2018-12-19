@@ -19,12 +19,15 @@ See example below.
 package main
 
 import (
-    log "github.com/nuttmeister/llogger"
+    "ctx"
+    "time"
+
+    l "github.com/nuttmeister/llogger"
 )
 func handler(ctx context.Context) {
-    l := log.Create(ctx, Input{"service": "myService", "env": "production", "llogger-llfn": "custom-loglevel"})
+    log := l.Create(ctx, l.Input{"service": "myService", "env": "production", "llogger-llfn": "custom-loglevel", "llogger-tf": time.Kitchen})
 
-    l.Print(log.Input{
+    log.Print(l.Input{
         "custom-loglevel":  "error",
         "message":          "We got an fatal error in the flux capacitor",
         "requestId":        "1337-1234567890",
@@ -37,7 +40,7 @@ func handler(ctx context.Context) {
 The example above would result in an output to stdout that looks like
 
 ```json
-{"custom-loglevel":"error","time":"2018-01-01 00:00:00.000001","message":"We got an fatal error in the flux capacitor","service":"myService","env":"production","requestId":"1337-1234567890","sourceIp":"127.0.0.1","userAgent":"FutureBrowser/2.0","duration":0.000123,"timeLeft":2.999877,"resource":{"function":"main.main","file":"/go/src/github.com/nuttmeister/example/example.go","row":8}}
+{"custom-loglevel":"error","time":"0:00AM","message":"We got an fatal error in the flux capacitor","service":"myService","env":"production","requestId":"1337-1234567890","sourceIp":"127.0.0.1","userAgent":"FutureBrowser/2.0","duration":0.000123,"timeLeft":2.999877,"resource":{"function":"main.main","file":"/go/src/github.com/nuttmeister/example/example.go","row":8}}
 ```
 
 We use stdout for logging since all messages to stdout and stderr are sent to cloudwatch logs.
@@ -67,6 +70,21 @@ By default these loglevel messages are `"warning", "error"`, but by setting the 
 ```text
 warning     llogger-wm
 critical    llogger-cm
+```
+
+## Overwriting format used for time
+
+The default format for the timestamp is "2006-01-02 15:04:05.999999" but this can be overwritten by specifying
+the key below in the `Input{}` for the `Create` function.
+
+You can either specify the format with a valig golang string or a built in time.Format, please see
+[https://golang.org/src/time/format.go](https://golang.org/src/time/format.go) for options.
+
+You can also specify the following "special" ones `Unix` and `UnixNano` and they will represent the string
+as either Unix or UnixNano timestamp.
+
+```text
+time format     llogger-tf
 ```
 
 ## Tests

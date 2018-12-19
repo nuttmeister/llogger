@@ -40,6 +40,12 @@ type Client struct {
 	wm string // warning log level message
 	cm string // critical log level message
 
+	// The format used for the time field.
+	// Defaults to 2006-01-02 15:04:05.999999
+	// and can be overwritten with llogger-tf
+	// in Input.
+	tf string // Time format to use
+
 	Warning  chan<- time.Duration
 	Critical chan<- time.Duration
 }
@@ -95,7 +101,18 @@ func (l *Client) Print(inp Input) {
 // on data from the lambda context.
 // Returns output.
 func (l *Client) createOutput(inp Input) output {
-	out := output{l.tfn: time.Now().Format("2006-01-02 15:04:05.999999")}
+	out := output{}
+
+	switch l.tf {
+	case "Unix":
+		out[l.tfn] = time.Now().Unix()
+
+	case "UnixNano":
+		out[l.tfn] = time.Now().UnixNano()
+
+	default:
+		out[l.tfn] = time.Now().Format(l.tf)
+	}
 
 	// Merge Input from l and Input.
 	for k, v := range l.data {
@@ -138,6 +155,9 @@ func Create(ctx context.Context, inp Input) *Client {
 
 	// Set the warning and critical error messages..
 	l.setErrorMessages()
+
+	// Set the format to use for time.
+	l.setTimeFormat()
 
 	// If context is nil we can just return the *Client.
 	// This is so we support using this logger without
@@ -291,5 +311,24 @@ func (l *Client) setErrorMessages() {
 	}
 	if l.cm == "" {
 		l.cm = "error"
+	}
+}
+
+// setTimeFormat will set the format to use for showing "time". Will default
+// to "2006-01-02 15:04:05.999999". All golang time formats can be used.
+// For list and manual parse see https://golang.org/src/time/format.go
+func (l *Client) setTimeFormat() {
+	// Try and get Warning Message from l.data as a string.
+	if tf, ok := l.data["llogger-tf"]; ok {
+		if str, ok := tf.(string); ok {
+			l.tf = str
+		}
+		delete(l.data, "llogger-tf")
+	}
+
+	// Check that format was set. If empty set to default
+	// 2006-01-02 15:04:05.999999.
+	if l.tf == "" {
+		l.tf = "2006-01-02 15:04:05.999999"
 	}
 }

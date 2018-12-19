@@ -15,7 +15,7 @@ import (
 const fileName = "github.com/nuttmeister/llogger/llogger_test.go"
 
 type message1 struct {
-	Time     string   `json:"time"`
+	Time     int64    `json:"time"`
 	Service  string   `json:"service"`
 	Env      string   `json:"env"`
 	Version  string   `json:"version"`
@@ -28,7 +28,7 @@ type message1 struct {
 }
 
 type message2 struct {
-	Time     string   `json:"custom-time"`
+	Time     int64    `json:"custom-time"`
 	Service  string   `json:"service"`
 	Env      string   `json:"env"`
 	Version  string   `json:"version"`
@@ -62,6 +62,7 @@ func Test(t *testing.T) {
 		"service":      "llogger-test",
 		"env":          "test",
 		"version":      "1.0.0",
+		"llogger-tf":   "Unix",
 		"llogger-tfn":  1,
 		"llogger-llfn": 2,
 		"llogger-mfn":  3,
@@ -77,6 +78,7 @@ func Test(t *testing.T) {
 		"env":          "test",
 		"version":      "1.0.0",
 		"llogger-tfn":  "custom-time",
+		"llogger-tf":   "UnixNano",
 		"llogger-llfn": "custom-loglevel",
 		"llogger-mfn":  "custom-message",
 		"llogger-dfn":  "custom-duration",
@@ -139,12 +141,6 @@ func msg1(raw string, t *testing.T) {
 		t.Fatalf("Couldn't unmarshal the message in msg1. Error %s", err.Error())
 	}
 
-	// Parse the time in Message
-	msgTime, err := time.Parse("2006-01-02 15:04:05.999999", msg.Time)
-	if err != nil {
-		t.Fatalf("Couldn't parse time in message in msg1. Error %s", err.Error())
-	}
-
 	switch {
 	// Check for correct loglevel.
 	case msg.LogLevel != "verbose":
@@ -153,6 +149,10 @@ func msg1(raw string, t *testing.T) {
 	// Check for correct message.
 	case msg.Message != "Testmessage1":
 		t.Fatalf("message in msg1 not Testmessage1")
+
+	// Check that time.Now().UnixNano() is higher
+	case time.Now().Unix() < msg.Time:
+		t.Fatalf("time in msg1 is in the future")
 
 	// Check for correct service.
 	case msg.Service != "llogger-test":
@@ -165,11 +165,6 @@ func msg1(raw string, t *testing.T) {
 	// Check for correct version.
 	case msg.Version != "1.0.0":
 		t.Fatalf("version in msg1 not 1.0.0")
-
-	// Check that time is after starttime.
-	case msgTime.Before(startTime):
-		t.Fatalf("Time in msg1 was before start time of test! Time: %s, Test start time: %s",
-			msgTime.String(), startTime.String())
 
 	// Check filename of function.
 	case !strings.Contains(msg.Resource.File, fileName):
@@ -197,12 +192,6 @@ func msg2(raw string, t *testing.T) {
 		t.Fatalf("Couldn't unmarshal the message in msg2. Error %s", err.Error())
 	}
 
-	// Parse the time in Message
-	msgTime, err := time.Parse("2006-01-02 15:04:05.999999", msg.Time)
-	if err != nil {
-		t.Fatalf("Couldn't parse time in message in msg2. Error %s", err.Error())
-	}
-
 	switch {
 	// Check for correct loglevel.
 	case msg.LogLevel != "custom-warning":
@@ -212,7 +201,11 @@ func msg2(raw string, t *testing.T) {
 	case msg.Message != "Testmessage2":
 		t.Fatalf("message in msg2 not Testmessage2")
 
-		// Check for correct service.
+	// Check that time.Now().UnixNano() is higher
+	case time.Now().UnixNano() < msg.Time:
+		t.Fatalf("time in msg2 is in the future")
+
+	// Check for correct service.
 	case msg.Service != "llogger-test":
 		t.Fatalf("service in msg2 not llogger-test")
 
@@ -223,11 +216,6 @@ func msg2(raw string, t *testing.T) {
 	// Check for correct version.
 	case msg.Version != "1.0.0":
 		t.Fatalf("version in msg2 not 1.0.0")
-
-	// Check that time is after starttime.
-	case msgTime.Before(startTime):
-		t.Fatalf("Time in msg2 was before start time of test! Time: %s, Test start time: %s",
-			msgTime.String(), startTime.String())
 
 	// Check filename of function.
 	case !strings.Contains(msg.Resource.File, fileName):
