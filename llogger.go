@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+var (
+	w = time.Duration(0)
+	c = time.Duration(0)
+)
+
 // Client struct contains the state of the Client as well
 // as channels for Warning and Critical time left until
 // lambda deadline is reached.
@@ -17,6 +22,8 @@ type Client struct {
 	context  context.Context
 	start    time.Time
 	deadline time.Time
+	// w        time.Duration
+	// c        time.Duration
 
 	// The field names for loglevel, message, duration,
 	// time left and resource field names. Can be changed
@@ -46,8 +53,8 @@ type Client struct {
 	// in Input.
 	tf string // Time format to use
 
-	Warning  chan<- time.Duration
-	Critical chan<- time.Duration
+	// Warning  chan<- time.Duration
+	// Critical chan<- time.Duration
 }
 
 // Input is used by the Print function to print information
@@ -185,29 +192,48 @@ func Create(ctx context.Context, inp Input) *Client {
 	// Set duration, warning and critical levels.
 	// And create the channels for sending messages
 	// back to the calling function.
-	dur := l.deadline.Sub(l.start)
-	w := time.Tick(dur * 3 / 4)
-	c := time.Tick(dur * 9 / 10)
+	// dur := l.deadline.Sub(l.start)
 
-	l.Warning = make(chan<- time.Duration)
-	l.Critical = make(chan<- time.Duration)
+	// w = 0
+	// c = 0
 
-	// Wait for Warning.
-	go func() {
-		<-w
-		l.Print(Input{l.llfn: l.wm, l.mfn: "Only 25% of execution time left"})
-		l.Warning <- l.deadline.Sub(time.Now())
-	}()
+	// w = dur * 3 / 4
+	// c = dur * 9 / 19
 
-	// Wait for Critical.
-	go func() {
-		<-c
-		l.Print(Input{l.llfn: l.cm, l.mfn: "Only 10% of execution time left"})
-		l.Critical <- l.deadline.Sub(time.Now())
-	}()
+	// fmt.Println("w", l.w)
+	// fmt.Println("c", l.c)
+
+	// l.Warning = make(chan<- time.Duration)
+	// l.Critical = make(chan<- time.Duration)
+
+	// fmt.Println(runtime.NumGoroutine())
+
+	// go l.warning(w)
+	// go l.critical(c)
 
 	return l
 }
+
+// func (l *Client) Close() {
+// 	l.
+// }
+
+// func (l *Client) warning(w time.Duration) {
+// 	select {
+// 	default:
+// 		time.Sleep(time.Duration(100*time.Millisecond))
+// 	}
+
+// 	time.Sleep(w)
+// 	l.Print(Input{l.llfn: l.wm, l.mfn: "Only 25% of execution time left"})
+// 	l.Warning <- l.deadline.Sub(time.Now())
+// }
+
+// func (l *Client) critical(c time.Duration) {
+// 	time.Sleep(c)
+// 	l.Print(Input{l.llfn: l.cm, l.mfn: "Only 10% of execution time left"})
+// 	l.Critical <- l.deadline.Sub(time.Now())
+// }
 
 // setFieldNames will set the default key names for the log level and message
 // field. If not specified by env variables it will default to "loglevel"
