@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-var (
-	w = time.Duration(0)
-	c = time.Duration(0)
-)
+// var (
+// 	w = time.Duration(0)
+// 	c = time.Duration(0)
+// )
 
 // Client struct contains the state of the Client as well
 // as channels for Warning and Critical time left until
@@ -38,6 +38,10 @@ type Client struct {
 	dfn  string // duration fieldname
 	tlfn string // time left fieldname
 	rfn  string // resource fieldname
+
+	// Prefix and suffixes
+	pre string // Prefix
+	suf string // Suffix
 
 	// The warning and critical log levels. Can be
 	// set by setting the llogger-wm and llogger-cm
@@ -98,7 +102,7 @@ func (l *Client) Print(inp Input) {
 		l.Print(Input{l.llfn: l.cm, l.mfn: "Couldn't JSON marshal the error message"})
 
 	default:
-		fmt.Printf("%s\n", raw)
+		fmt.Printf("%s%s%s\n", l.pre, raw, l.suf)
 	}
 }
 
@@ -285,6 +289,22 @@ func (l *Client) setFieldNames() {
 			l.rfn = str
 		}
 		delete(l.data, "llogger-rfn")
+	}
+
+	// Add prefix to output if supplied.
+	if pre, ok := l.data["llogger-prefix"]; ok {
+		if str, ok := pre.(string); ok {
+			l.pre = str
+		}
+		delete(l.data, "llogger-prefix")
+	}
+
+	// Add suffix to output if supplied.
+	if suf, ok := l.data["llogger-suffix"]; ok {
+		if str, ok := suf.(string); ok {
+			l.suf = str
+		}
+		delete(l.data, "llogger-suffix")
 	}
 
 	// Check that Log Level and Message is not empty. If they are empty

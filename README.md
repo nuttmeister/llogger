@@ -45,6 +45,22 @@ The example above would result in an output to stdout that looks like
 
 We use stdout for logging since all messages to stdout and stderr are sent to cloudwatch logs.
 
+## Adding Prefix and/or Suffix to the output
+
+If you need to add a prefix or suffix to your output, you can do this by adding the following keys in the `Input{}` struct to `Create`.
+
+```text
+prefix      llogger-prefix
+suffix      llogger-suffix
+```
+
+So if you add a suffix of `mysub: ` and then print `Input{"custom-loglevel": "error", "message": "We got an fatal error in the flux capacitor"}` the output
+would become.
+
+```json
+mysub: {"custom-loglevel":"error","time":"0:00AM","message":"We got an fatal error in the flux capacitor","service":"myService","env":"production","duration":0.000123,"timeLeft":2.999877,"resource":{"function":"main.main","file":"/go/src/github.com/nuttmeister/example/example.go","row":8}}
+```
+
 ## Overwriting standard field names
 
 These standard field names are used by the logger `"time", "loglevel", "message", "duration", "timeLeft", "resource"`.  
