@@ -74,18 +74,20 @@ func Test(t *testing.T) {
 	})
 
 	client2 := Create(nil, Input{
-		"service":      "llogger-test",
-		"env":          "test",
-		"version":      "1.0.0",
-		"llogger-tfn":  "custom-time",
-		"llogger-tf":   "UnixNano",
-		"llogger-llfn": "custom-loglevel",
-		"llogger-mfn":  "custom-message",
-		"llogger-dfn":  "custom-duration",
-		"llogger-tlfn": "custom-timeLeft",
-		"llogger-rfn":  "custom-resource",
-		"llogger-wm":   "custom-warning",
-		"llogger-cm":   "custom-error",
+		"service":        "llogger-test",
+		"env":            "test",
+		"version":        "1.0.0",
+		"llogger-tfn":    "custom-time",
+		"llogger-tf":     "UnixNano",
+		"llogger-llfn":   "custom-loglevel",
+		"llogger-mfn":    "custom-message",
+		"llogger-dfn":    "custom-duration",
+		"llogger-tlfn":   "custom-timeLeft",
+		"llogger-rfn":    "custom-resource",
+		"llogger-wm":     "custom-warning",
+		"llogger-cm":     "custom-error",
+		"llogger-prefix": "prefix: ",
+		"llogger-suffix": " suffix",
 	})
 
 	client3 := Create(nil, nil)
@@ -188,11 +190,25 @@ func msg1(raw string, t *testing.T) {
 func msg2(raw string, t *testing.T) {
 	// Unmarshal Message
 	msg := &message2{}
-	if err := json.Unmarshal([]byte(raw), msg); err != nil {
+
+	// Check for correct length doesn't crash.
+	if len(raw) != 339 {
+		t.Fatalf("length of msg2 isn't 339")
+	}
+
+	if err := json.Unmarshal([]byte(raw[8:332]), msg); err != nil {
 		t.Fatalf("Couldn't unmarshal the message in msg2. Error %s", err.Error())
 	}
 
 	switch {
+	// Check for correct prefix
+	case raw[0:8] != "prefix: ":
+		t.Fatalf("prefix wasn't 'prefix: ' in msg2")
+
+	// Check for correct suffix.
+	case raw[332:339] != " suffix":
+		t.Fatalf("suffix wasn't ' suffix' in msg2")
+
 	// Check for correct loglevel.
 	case msg.LogLevel != "custom-warning":
 		t.Fatalf("loglevel in msg2 not custom-warning")
