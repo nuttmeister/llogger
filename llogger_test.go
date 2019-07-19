@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const fileName = "github.com/nuttmeister/llogger/llogger_test.go"
+const fileName = "llogger_test.go"
 
 type message1 struct {
 	Time     int64    `json:"time"`
@@ -191,12 +191,7 @@ func msg2(raw string, t *testing.T) {
 	// Unmarshal Message
 	msg := &message2{}
 
-	// Check for correct length doesn't crash.
-	if len(raw) != 339 {
-		t.Fatalf("length of msg2 isn't 339")
-	}
-
-	if err := json.Unmarshal([]byte(raw[8:332]), msg); err != nil {
+	if err := json.Unmarshal([]byte(raw[8:len(raw)-7]), msg); err != nil {
 		t.Fatalf("Couldn't unmarshal the message in msg2. Error %s", err.Error())
 	}
 
@@ -206,7 +201,7 @@ func msg2(raw string, t *testing.T) {
 		t.Fatalf("prefix wasn't 'prefix: ' in msg2")
 
 	// Check for correct suffix.
-	case raw[332:339] != " suffix":
+	case raw[len(raw)-7:] != " suffix":
 		t.Fatalf("suffix wasn't ' suffix' in msg2")
 
 	// Check for correct loglevel.
