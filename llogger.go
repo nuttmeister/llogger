@@ -170,14 +170,19 @@ func Create(ctx context.Context, inp Input) *Client {
 	// Set the format to use for time.
 	l.setTimeFormat()
 
-	// If context is nil we can just return the *Client.
-	// This is so we support using this logger without
-	// having to use the context from lambda.
-	// In most cases the context can and should
-	// be included. There is practically no overhead
-	// for using it.
+	// Set the context.
+	l.UpdateContext(ctx)
+
+	return l
+}
+
+// UpdateContext updates the context of the Client. This is useful
+// when you have a persistent llogger in your code but want to update
+// the context on each iteration.
+func (l *Client) UpdateContext(ctx context.Context) {
+	// If context is nil there is no need to set the context.
 	if l.context == nil {
-		return l
+		return
 	}
 
 	// If we can't get Deadline from context set context to nil and
@@ -187,7 +192,7 @@ func Create(ctx context.Context, inp Input) *Client {
 	case !ok:
 		l.context = nil
 		l.Print(Input{l.llfn: l.cm, l.mfn: "Couldn't get Deadline from context"})
-		return l
+		return
 
 	default:
 		l.deadline = d.UTC()
@@ -214,8 +219,6 @@ func Create(ctx context.Context, inp Input) *Client {
 
 	// go l.warning(w)
 	// go l.critical(c)
-
-	return l
 }
 
 // func (l *Client) Close() {
