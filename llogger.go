@@ -181,9 +181,12 @@ func Create(ctx context.Context, inp Input) *Client {
 // the context on each iteration.
 func (l *Client) UpdateContext(ctx context.Context) {
 	// If context is nil there is no need to set the context.
-	if l.context == nil {
+	if ctx == nil {
 		return
 	}
+
+	// Set context.
+	l.context = ctx
 
 	// If we can't get Deadline from context set context to nil and
 	// print an error message.
